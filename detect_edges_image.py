@@ -3,9 +3,7 @@ import os
 import numpy as np
 from os import listdir
 import random
-
-
-# import tensorflow as tf
+import tensorflow as tf
 
 
 class CropLayer(object):
@@ -32,8 +30,10 @@ class CropLayer(object):
         return [inputs[0][:, :, self.startY:self.endY, self.startX:self.endX]]
 
 
+# holistically-nested edge detection
+# takes cv2 image
+# generates edge detected form of that image
 def hedConvert(image):
-
     protoPath = os.path.sep.join(["hed_model", "deploy.prototxt"])
     modelPath = os.path.sep.join(
         ["hed_model", "hed_pretrained_bsds.caffemodel"])
@@ -59,16 +59,19 @@ def hedConvert(image):
     return hed
 
 
+# crop image to 256x256 pixels
 def cropImage(img):
     img_map = img[0:256, 0:256]
     return img_map
 
 
+# return files inside a given folder
 def folderList(path: str):
     import glob
     return glob.glob(path)
 
 
+# resize images to be fitted horizontally 256 pixels
 def image_resize(image, width=256, height=256, inter=cv2.INTER_AREA):
     dim = None
     (h, w) = image.shape[:2]
@@ -83,6 +86,8 @@ def image_resize(image, width=256, height=256, inter=cv2.INTER_AREA):
     return resized
 
 
+# resize, crop and apply hed method in this order
+# then concatenate hed image and cropped size side by side
 def convertImages(path):
     for index, imageFile in enumerate(folderList(path + "/*.jpg")):
         img = cv2.imread(imageFile)
@@ -95,6 +100,7 @@ def convertImages(path):
         print(imageFile.split("/")[-1])
 
 
+# shuffle files inside the a given directory
 def shuffle(path):
     print(len(listdir(path)))
 
@@ -103,25 +109,14 @@ def shuffle(path):
             r = str(random.randint(1, 1360))
             if r == i.split('.')[0]:
                 r = str(random.randint(1, 1360))
-            if os.path.exists(path+i):
+            if os.path.exists(path + i):
                 os.rename(path + r + '.jpg', path + 'test.jpg')
                 os.rename(path + i, path + r + '.jpg')
-                os.rename(path + 'test.jpg', path+i)
+                os.rename(path + 'test.jpg', path + i)
 
-    # for i in range(1, 8027)[-400:]:
-        # os.rename(path+str(i)+".jpg", "dataset/test/"+str(i)+".jpg")
 
-    # path = 'dataset/test/'
-
-    # for i, f in enumerate(listdir(path)):
-    #     os.rename(path + f, path + str(i+1) + ".jpg")
-
-#cap = cv2.VideoCapture(-1)
-#cap.set(cv2.CAP_PROP_FOURCC,cv2.VideoWriter_fourcc('M','J','P','G'))
-#cap.set()
-
+# Load a (frozen) Tensorflow model into memory.
 def load_graph(frozen_graph_filename):
-    """Load a (frozen) Tensorflow model into memory."""
     graph = tf.Graph()
     with graph.as_default():
         od_graph_def = tf.GraphDef()
@@ -131,30 +126,32 @@ def load_graph(frozen_graph_filename):
             tf.import_graph_def(od_graph_def, name='')
     return graph
 
-# cap = cv2.VideoCapture(0)
+
+# use webcam capture device
+cap = cv2.VideoCapture(0)
+
+# apply data cleaning and preprocessing methods to webcam feed
 if __name__ == "__main__":
-    # graph = load_graph("frozen_model.pb")
-    # image_tensor = graph.get_tensor_by_name('image_tensor:0')
-    # output_tensor = graph.get_tensor_by_name('generate_output/output:0')
-    # sess = tf.Session(graph=graph)
-    # while True:
-    #     ret, frame = cap.read()
-    #     resizedImage = image_resize(frame)
-    #     croppedImage = cropImage(resizedImage)
-    #     hedImage = hedConvert(croppedImage)
-    #     hedImage = np.stack((hedImage, ) * 3, axis=-1)
-    #     hedImage = np.concatenate((hedImage, hedImage), axis=1)
-    #     generated_image = sess.run(output_tensor, feed_dict={image_tensor: hedImage})
-    #     image_bgr = cv2.cvtColor(np.squeeze(generated_image), cv2.COLOR_RGB2BGR)
-    #     concatedImage = np.concatenate((image_bgr, croppedImage), axis=1)
+    graph = load_graph("frozen_model.pb")
+    image_tensor = graph.get_tensor_by_name('image_tensor:0')
+    output_tensor = graph.get_tensor_by_name('generate_output/output:0')
+    sess = tf.Session(graph=graph)
+    while True:
+        ret, frame = cap.read()
+        resizedImage = image_resize(frame)
+        croppedImage = cropImage(resizedImage)
+        hedImage = hedConvert(croppedImage)
+        hedImage = np.stack((hedImage, ) * 3, axis=-1)
+        hedImage = np.concatenate((hedImage, hedImage), axis=1)
+        generated_image = sess.run(output_tensor,
+                                   feed_dict={image_tensor: hedImage})
+        image_bgr = cv2.cvtColor(np.squeeze(generated_image),
+                                 cv2.COLOR_RGB2BGR)
+        concatedImage = np.concatenate((image_bgr, croppedImage), axis=1)
 
-
-    #     # Display the resulting frame
-    #     cv2.imshow('frame', concatedImage)
-    #     if cv2.waitKey(1) & 0xFF == ord('q'):
-    #         break
-    # cap.release()
-    # cv2.destroyAllWindows()
-
-    #convertImages("jpg")
-    shuffle("dataset/")
+        # Display the resulting frame
+        cv2.imshow('frame', concatedImage)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+    cap.release()
+    cv2.destroyAllWindows()
