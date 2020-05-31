@@ -103,7 +103,6 @@ def convertImages(path):
 # shuffle files inside the a given directory
 def shuffle(path):
     print(len(listdir(path)))
-
     for k in range(10):
         for i in listdir(path):
             r = str(random.randint(1, 1360))
