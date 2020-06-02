@@ -1,3 +1,6 @@
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
 import cv2
 import os
 import numpy as np
@@ -7,11 +10,24 @@ import tensorflow as tf
 import argparse
 
 parser = argparse.ArgumentParser(description='Pix2Art AML Final Project')
-parser.add_argument('-p','--dataset-path',dest="dataset_path", type=str, help='Dataset path for cleaning')
-parser.add_argument('-o','--output-path',dest="output_path", type=str, help='Dataset output path')
-parser.add_argument('-r', '--run',dest="run", help='Run directly from webcam stream', action='store_true')
+parser.add_argument('-p',
+                    '--dataset-path',
+                    dest="dataset_path",
+                    type=str,
+                    help='Dataset path for cleaning')
+parser.add_argument('-o',
+                    '--output-path',
+                    dest="output_path",
+                    type=str,
+                    help='Dataset output path')
+parser.add_argument('-r',
+                    '--run',
+                    dest="run",
+                    help='Run directly from webcam stream',
+                    action='store_true')
 
 args = parser.parse_args()
+
 
 class CropLayer(object):
     def __init__(self, params, blobs):
@@ -132,6 +148,7 @@ def load_graph(frozen_graph_filename):
             tf.import_graph_def(od_graph_def, name='')
     return graph
 
+
 # apply data cleaning and preprocessing methods to webcam feed
 def runWebcamStream():
     # use webcam capture device
@@ -160,12 +177,16 @@ def runWebcamStream():
     cap.release()
     cv2.destroyAllWindows()
 
+
 if __name__ == "__main__":
 
     if args.run:
         print("Running from webcam stream")
         runWebcamStream()
-    elif args.dataset_path!=None or args.output_path!=None:
-    	print(f"Cleaning dataset from {args.dataset_path} to {args.output_path}")
-    	convertImages(args.dataset_path, args.output_path)
-
+    elif args.dataset_path != None or args.output_path != None:
+        print(
+            f"Cleaning dataset from {args.dataset_path} to {args.output_path}")
+        convertImages(args.dataset_path, args.output_path)
+    else:
+        print("No Arguments Provided!!")
+        exit(1)

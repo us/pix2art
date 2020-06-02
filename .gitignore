@@ -1,3 +1,5 @@
 virenv
 .idea*
 *.pb
+venv
+.vscode
